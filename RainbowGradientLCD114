@@ -1,0 +1,74 @@
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7789.h>
+#include <SPI.h>
+
+#define TFT_CS D2  // Chip select pin
+#define TFT_DC D3  // Data/command pin
+#define TFT_RST D4 // Reset pin (or connect to Arduino RESET)
+
+// Create the display object
+Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
+
+#define SOUND_SENSOR_PIN A0 // Analog input pin for sound sensor
+
+// Screen dimensions
+#define SCREEN_WIDTH 240
+#define SCREEN_HEIGHT 135
+
+void setup() {
+  // Initialize Serial Monitor
+  Serial.begin(115200);
+
+  // Initialize the display
+  tft.init(135, 240, 400000000); // Initialize display with width and height
+  tft.setRotation(3); // Set to landscape mode
+  tft.fillScreen(ST77XX_BLACK); // Clear the screen
+}
+
+void loop() {
+  // Clear the screen (optional, for smoother effect)
+  tft.fillScreen(ST77XX_BLACK);
+
+  // Draw waveform
+  drawWaveform();
+
+  // Delay for smooth animation
+  delay(50);
+}
+
+void drawWaveform() {
+  static int prevY[SCREEN_WIDTH]; // Store previous y positions for clearing
+
+  for (int x = 0; x < SCREEN_WIDTH; x++) {
+    // Read sound sensor value
+    int sensorValue = analogRead(SOUND_SENSOR_PIN);
+
+    // Map sensor value to screen height
+    int y = map(sensorValue, 0, 1023, SCREEN_HEIGHT, 0);
+
+    // Clear the previous line
+    tft.drawFastVLine(x, prevY[x], SCREEN_HEIGHT - prevY[x], ST77XX_BLACK);
+
+    // Calculate a color gradient
+    uint16_t color = getColorGradient(x);
+
+    // Draw the new waveform line
+    tft.drawFastVLine(x, y, SCREEN_HEIGHT - y, color);
+
+    // Store the current position for the next frame
+    prevY[x] = y;
+  }
+}
+
+uint16_t getColorGradient(int position) {
+  // Create a smooth rainbow gradient based on the x position
+  if (position < SCREEN_WIDTH / 3) {
+    return tft.color565(255 - (position * 3), position * 3, 0); // Red to green
+  } else if (position < (2 * SCREEN_WIDTH) / 3) {
+    position -= SCREEN_WIDTH / 3;
+    return tft.color565(0, 255 - (position * 3), position * 3); // Green to blue
+  } else {
+    position -= (2 * SCREEN_WIDTH) / 3;
+    return tft.color565(position * 3, 0, 255 - (position * 3)); // Blue to red
+  }
+}
